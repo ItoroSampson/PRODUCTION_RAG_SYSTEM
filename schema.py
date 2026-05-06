@@ -5,8 +5,10 @@ class DocumentChunk(BaseModel):
     content: str
     metadata: dict = Field(
         default_factory=lambda: {
-            "source": "AWS_Well_Architected_Framework.pdf",
+            "source": "",
             "page_number": 0,
-            "section": "",
+            "pillar": None,
+            "best_practice_id": None,
+            "source_url": None,
         }
     )
