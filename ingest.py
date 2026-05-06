@@ -2,6 +2,7 @@ import asyncio
 import re
 from typing import List
 
+from database import add_chunks_to_db
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from schema import DocumentChunk
@@ -92,5 +93,10 @@ if __name__ == "__main__":
         print(f"Pillar: {sample.metadata['pillar']}")
         print(f"ID:     {sample.metadata['best_practice_id']}")
         print(f"URL:    {sample.metadata['source_url']}")
+        print("------------------------------\n")
+
+        # 3. Push to Vector Store
+        print(f"[*] Initializing ChromaDB push for {len(results)} chunks...")
+        add_chunks_to_db(results)
     except FileNotFoundError:
         print(f"[!] Error: Could not find the PDF at {PDF_PATH}")
