@@ -2,7 +2,7 @@ import hashlib
 import os
 from typing import List, Optional
 
-import joblib  # pip install joblib
+import joblib
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from generation import generate_answer
