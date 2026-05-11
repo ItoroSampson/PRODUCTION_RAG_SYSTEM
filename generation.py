@@ -1,5 +1,3 @@
-import os
-
 import requests
 from dotenv import load_dotenv
 from retrieval import retrieve_context
@@ -27,7 +25,7 @@ def generate_answer(query: str):
 
     # 3. Call Ollama
     print("[*] Generating answer via Ollama...")
-    OLLAMA_URL = os.getenv("OLLAMA_URL")
+    url = "http://localhost:11434/api/generate"
     payload = {
         "model": "llama3.2",
         "prompt": query,
