@@ -42,52 +42,52 @@ class QueryResponse(BaseModel):
     cached: bool = False  # Tells the user if they got a fresh or cached answer
 
 
-@app.get("/")
-def health_check():
-    return {"status": "online", "model": ("llama3.2")}
-
-
 @app.post("/ask", response_model=QueryResponse)
 async def ask_architect(request: QueryRequest):
     query_hash = get_query_hash(request.question)
     cache_path = os.path.join(CACHE_DIR, f"{query_hash}.pkl")
 
-    # 1. Check if we have answered this before
     if os.path.exists(cache_path):
-        print(f"[*] Cache Hit! Serving instant response for: {request.question}")
+        print("[*] Cache Hit!")
         cached_data = joblib.load(cache_path)
         cached_data.cached = True
         return cached_data
 
-    # 2. If not in cache, run the full RAG pipeline
-    print(f"[*] Cache Miss. Processing fresh request: {request.question}")
-    answer, raw_metadata = generate_answer(request.question)
+    print("[*] Cache Miss. Processing fresh request...")
 
-    if not raw_metadata:
-        raise HTTPException(status_code=500, detail="Retrieval failed")
+    try:
+        # Call the generation logic
+        answer, raw_metadata = generate_answer(request.question)
 
-    # Format the sources
-    formatted_sources = []
-    seen_pages = set()
+        print(f"[*] Debug: raw_metadata type is {type(raw_metadata)}")
 
-    for meta in raw_metadata["metadatas"][0]:
-        page = meta.get("page_number")
-        if page not in seen_pages:
-            formatted_sources.append(
-                SourceMetadata(
-                    page_number=page,
-                    pillar=meta.get("pillar"),
-                    source_url=meta.get("source_url"),
-                )
-            )
-            seen_pages.add(page)
+        if not raw_metadata or "metadatas" not in raw_metadata:
+            print("[!] Warning: raw_metadata is missing 'metadatas' key")
 
-    # 3. Create the final response object
-    response_data = QueryResponse(
-        answer=answer, sources=formatted_sources, cached=False
-    )
+            formatted_sources = []
+        else:
+            formatted_sources = []
+            seen_pages = set()
+            for meta in raw_metadata["metadatas"][0]:
+                page = meta.get("page_number")
+                if page and page not in seen_pages:
+                    formatted_sources.append(
+                        SourceMetadata(
+                            page_number=page,
+                            pillar=meta.get("pillar"),
+                            source_url=meta.get("source_url"),
+                        )
+                    )
+                    seen_pages.add(page)
 
-    # 4. Save to cache for next time
-    joblib.dump(response_data, cache_path)
+        response_data = QueryResponse(
+            answer=answer, sources=formatted_sources, cached=False
+        )
 
-    return response_data
+        joblib.dump(response_data, cache_path)
+        return response_data
+
+    except Exception as e:
+        print(f"[ERROR] The pipeline crashed: {str(e)}")
+
+        raise HTTPException(status_code=500, detail=f"Internal Logic Error: {str(e)}")
