@@ -1,14 +1,16 @@
+import os
 from typing import List
 
 import chromadb
 from chromadb.utils import embedding_functions
+from dotenv import load_dotenv
 from schema import DocumentChunk
+
+load_dotenv()
 
 # 1. Setting up Persistent Storage
 # This ensures my 3,190 chunks stay on disk even if i restart
-CHROMA_DATA_PATH = (
-    "d:/Users/ITORO SAMPSON/Documents/PYTHON PROJECTS/PRODUCTION_RAG_SYSTEM/chroma_db"
-)
+CHROMA_DATA_PATH = os.getenv("CHROMA_PATH")
 COLLECTION_NAME = "aws_well_architected"
 
 # 2. Define the Embedding Function
