@@ -14,7 +14,6 @@ load_dotenv()
 app = FastAPI(title="AWS Architect RAG API")
 
 # --- CACHE SETUP ---
-
 CACHE_DIR = "api_cache"
 if not os.path.exists(CACHE_DIR):
     os.makedirs(CACHE_DIR)
@@ -39,7 +38,7 @@ class SourceMetadata(BaseModel):
 class QueryResponse(BaseModel):
     answer: str
     sources: List[SourceMetadata]
-    cached: bool = False  # Tells the user if they got a fresh or cached answer
+    cached: bool = False
 
 
 @app.post("/ask", response_model=QueryResponse)
@@ -47,6 +46,7 @@ async def ask_architect(request: QueryRequest):
     query_hash = get_query_hash(request.question)
     cache_path = os.path.join(CACHE_DIR, f"{query_hash}.pkl")
 
+    # 1. Check Cache
     if os.path.exists(cache_path):
         print("[*] Cache Hit!")
         cached_data = joblib.load(cache_path)
@@ -56,20 +56,19 @@ async def ask_architect(request: QueryRequest):
     print("[*] Cache Miss. Processing fresh request...")
 
     try:
-        # Call the generation logic
-        answer, raw_metadata = generate_answer(request.question)
+        # 2. Call the updated generation logic (Returns: answer, reranked_results)
+        answer, reranked_results = generate_answer(request.question)
 
-        print(f"[*] Debug: raw_metadata type is {type(raw_metadata)}")
+        # 3. Format the reranked sources
+        formatted_sources = []
+        seen_pages = set()
 
-        if not raw_metadata or "metadatas" not in raw_metadata:
-            print("[!] Warning: raw_metadata is missing 'metadatas' key")
-
-            formatted_sources = []
-        else:
-            formatted_sources = []
-            seen_pages = set()
-            for meta in raw_metadata["metadatas"][0]:
+        if reranked_results:
+            # reranked_results is now a list of hits like: [{"content":..., "metadata":...}, ...]
+            for hit in reranked_results:
+                meta = hit.get("metadata", {})
                 page = meta.get("page_number")
+
                 if page and page not in seen_pages:
                     formatted_sources.append(
                         SourceMetadata(
@@ -79,15 +78,18 @@ async def ask_architect(request: QueryRequest):
                         )
                     )
                     seen_pages.add(page)
+        else:
+            print("[!] Warning: No reranked results returned.")
 
+        # 4. Create response
         response_data = QueryResponse(
             answer=answer, sources=formatted_sources, cached=False
         )
 
+        # 5. Save to cache
         joblib.dump(response_data, cache_path)
         return response_data
 
     except Exception as e:
         print(f"[ERROR] The pipeline crashed: {str(e)}")
-
         raise HTTPException(status_code=500, detail=f"Internal Logic Error: {str(e)}")
