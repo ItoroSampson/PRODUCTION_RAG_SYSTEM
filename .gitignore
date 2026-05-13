@@ -1,0 +1,18 @@
+# Python environment
+venv/
+.env
+__pycache__/
+*.pyc
+
+# Data & Cache 
+api_cache/
+chroma_db/
+*.pkl
+
+# OS Specific
+.DS_Store
+Thumbs.db
+
+
+*.safetensors
+*.bin

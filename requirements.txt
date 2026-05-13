@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+python-dotenv
+requests
+pydantic
+joblib
+chromadb
+sentence-transformers
+streamlit
+ragas
+datasets
+pandas
