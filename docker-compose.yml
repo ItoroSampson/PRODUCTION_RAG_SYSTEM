@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # Ollama Service (The Foundation)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  # The FastAPI Backend
+  api:
+    build: .
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - HF_TOKEN=${HF_TOKEN}  
+    depends_on:
+      - ollama  
+
+  # The Streamlit Frontend
+  ui:
+    build: .
+    command: streamlit run ui.py --server.port 8501 --server.address 0.0.0.0
+    volumes:
+      - .:/app
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+
+volumes:
+  ollama_data:
